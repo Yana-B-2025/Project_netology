@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS Music_genres_Artists (
 CREATE TABLE IF NOT EXISTS Albums (
     ID_album INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     Name_of_album VARCHAR(255) NOT NULL,
-    Year_of_issue INT
+    Year_of_issue INT CHECK (Year_of_issue >= 1800)
 );
 
 CREATE TABLE IF NOT EXISTS Albums_Artists (
@@ -30,13 +30,19 @@ CREATE TABLE IF NOT EXISTS Albums_Artists (
 CREATE TABLE IF NOT EXISTS Tracks (
     ID_track INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     Name_of_track VARCHAR(255) NOT NULL,
-    Duration INTERVAL, -- В PostgreSQL тип INTERVAL идеально подходит для длительности (00:03:45)
+    Duration INT NOT NULL CHECK (Duration > 0),
     ID_album_fk INT REFERENCES Albums(ID_album) -- Внешний ключ на таблицу альбомов
 );
 
 CREATE TABLE IF NOT EXISTS Collections (
     ID_collection INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    ID_track INTEGER NOT NULL REFERENCES Tracks(ID_track),
     Name_of_collection VARCHAR(255) NOT NULL,
-    Year_of_issue INT
+    Year_of_issue INT CHECK (Year_of_issue >= 1800)
 );
+
+CREATE TABLE IF NOT EXISTS Tracks_Collections (
+	ID_track_tc INTEGER REFERENCES Tracks(ID_track),
+	ID_collection_tc INTEGER REFERENCES Collections(ID_collection),
+	CONSTRAINT pk_tracks_collections PRIMARY KEY (ID_track_tc, ID_collection_tc)
+);
+

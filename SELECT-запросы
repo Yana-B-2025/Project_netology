@@ -1,0 +1,126 @@
+-- Задание 2
+
+-- 1 Название и продолжительность самого длительного трека.
+
+SELECT name_of_track, duration
+FROM tracks
+WHERE duration = (SELECT MAX(duration) FROM tracks);
+
+-- 2 Название треков, продолжительность которых не менее 3,5 минут.
+
+SELECT name_of_track, duration
+FROM tracks
+WHERE duration >= 210;
+
+-- 3 Названия сборников, вышедших в период с 2018 по 2020 год включительно.
+
+SELECT name_of_album
+FROM albums
+WHERE year_of_issue BETWEEN 2018 AND 2020;
+
+-- 4 Исполнители, чьё имя состоит из одного слова.
+
+SELECT name_of_artist
+FROM artists
+WHERE name_of_artist NOT LIKE '% %' AND name_of_artist NOT LIKE '%-%';
+
+-- 5 Название треков, которые содержат слово «мой» или «my».
+
+SELECT name_of_track
+FROM tracks
+WHERE name_of_track LIKE '%мой%' OR name_of_track LIKE '%my%' OR name_of_track LIKE '%Мой%' OR name_of_track LIKE '%My%';
+
+
+-- Задание 3
+
+-- 1 Количество исполнителей в каждом жанре.
+
+SELECT name_of_genre, COUNT(id_artist_mga)
+FROM music_genres_artists mga
+JOIN music_genres mg ON mga.id_music_genre_mga = mg.id_music_genre
+GROUP BY name_of_genre;
+
+-- 2 Количество треков, вошедших в альбомы 2010–2020 годов.
+
+SELECT a.name_of_album, a.year_of_issue , COUNT(t.id_track)
+FROM albums a
+JOIN tracks t ON a.id_album = t.id_album_fk
+WHERE a.year_of_issue BETWEEN 2010 AND 2020
+GROUP BY a.name_of_album, a.year_of_issue;
+
+-- 3 Средняя продолжительность треков по каждому альбому.
+
+SELECT name_of_album, AVG(duration)
+FROM tracks t
+JOIN albums a ON t.id_track = a.id_album
+GROUP BY name_of_album;
+
+-- 4 Все исполнители, которые не выпустили альбомы в 2020 году.
+
+SELECT name_of_artist
+FROM artists
+WHERE name_of_artist NOT IN (
+    SELECT a.name_of_artist
+    FROM artists a
+    JOIN albums_artists aa ON a.id_artist = aa.id_artist_aa
+    JOIN albums alb ON aa.id_album_aa = alb.id_album
+    WHERE alb.year_of_issue = 2020
+);
+
+-- 5 Названия сборников, в которых присутствует конкретный исполнитель (выберите его сами).
+
+SELECT c.name_of_collection
+FROM collections c
+JOIN tracks_collections tc ON c.id_collection = tc.id_collection_tc
+JOIN tracks t ON tc.id_track_tc = t.id_track
+JOIN albums alb ON t.id_album_fk = alb.id_album
+JOIN albums_artists aa ON alb.id_album = aa.id_album_aa
+JOIN artists art ON aa.id_artist_aa = art.id_artist
+WHERE art.name_of_artist = 'Sting';
+
+
+-- Задание 4(необязательное)
+
+-- 1 Названия альбомов, в которых присутствуют исполнители более чем одного жанра.
+SELECT alb.name_of_album
+FROM albums alb
+JOIN albums_artists aa ON alb.id_album = aa.id_album_aa
+JOIN artists art ON aa.id_artist_aa = art.id_artist
+JOIN music_genres_artists mga ON art.id_artist = mga.id_artist_mga
+JOIN music_genres mg ON mga.id_artist_mga = mg.id_music_genre
+GROUP BY alb.name_of_album, mg.name_of_genre
+HAVING  COUNT(mg.name_of_genre)>1;
+
+
+-- 2 Наименования треков, которые не входят в сборники.
+
+SELECT t.name_of_track
+FROM tracks t
+WHERE NOT EXISTS (
+    SELECT * 
+    FROM tracks_collections tc 
+    WHERE tc.id_track_tc = t.id_track
+);
+
+
+-- 3 Исполнитель или исполнители, написавшие самый короткий по продолжительности трек, — теоретически таких треков может быть несколько.
+SELECT MIN(t.duration) 
+FROM tracks t
+JOIN albums alb ON t.id_album_fk = t.id_track
+JOIN albums_artists aa ON alb.id_album = aa.id_album_aa
+JOIN artists art ON aa.id_artist_aa = art.id_artist; 
+
+-- 4 Названия альбомов, содержащих наименьшее количество треков.
+
+SELECT a.name_of_album
+FROM albums a
+JOIN tracks t ON a.id_album = t.id_album_fk
+GROUP BY a.name_of_album
+HAVING COUNT(t.id_track) = (
+    SELECT COUNT(id_track) 
+    FROM tracks 
+    GROUP BY id_album_fk 
+    ORDER BY COUNT(id_track) 
+    LIMIT 1
+);
+

@@ -1,0 +1,46 @@
+INSERT INTO albums_artists (id_album_aa, id_artist_aa)
+VALUES 
+    ((SELECT id_album FROM albums WHERE name_of_album = 'Born_to_Die'), (SELECT id_artist FROM artists WHERE name_of_artist = 'Lana Del Rey')),
+    ((SELECT id_album FROM albums WHERE name_of_album = '21'), (SELECT id_artist FROM artists WHERE name_of_artist = 'Adele')),
+    ((SELECT id_album FROM albums WHERE name_of_album = 'Ten Summoners Tales'), (SELECT id_artist FROM artists WHERE name_of_artist = 'Sting')),
+	((SELECT id_album FROM albums WHERE name_of_album = 'The Fame Monster'), (SELECT id_artist FROM artists WHERE name_of_artist = 'Lady Gaga')),
+	((SELECT id_album FROM albums WHERE name_of_album = 'Slippery_When_Wet'), (SELECT id_artist FROM artists WHERE name_of_artist = 'Bon Jovi')),
+	((SELECT id_album FROM albums WHERE name_of_album = 'Machine Head'), (SELECT id_artist FROM artists WHERE name_of_artist = 'Deep Purple')),
+    ((SELECT id_album FROM albums WHERE name_of_album = 'Bi-2'), (SELECT id_artist FROM artists WHERE name_of_artist = 'Bi-2')),
+    ((SELECT id_album FROM albums WHERE name_of_album = 'Gruppa krovi'), (SELECT id_artist FROM artists WHERE name_of_artist = 'Viktor Tsoi')),
+	((SELECT id_album FROM albums WHERE name_of_album = 'Nothing_but_the_Beat'), (SELECT id_artist FROM artists WHERE name_of_artist = 'David Guetta')),
+    ((SELECT id_album FROM albums WHERE name_of_album = '18 Months'), (SELECT id_artist FROM artists WHERE name_of_artist = 'Calvin Harris')),
+    ((SELECT id_album FROM albums WHERE name_of_album = '76'), (SELECT id_artist FROM artists WHERE name_of_artist = 'Armin van Buuren')),
+    ((SELECT id_album FROM albums WHERE name_of_album = 'True_'), (SELECT id_artist FROM artists WHERE name_of_artist = 'Avicii'));
+
+
+INSERT INTO tracks (name_of_track, duration, id_album_fk)
+VALUES 
+    ('Summertime Sadness',265, (SELECT id_album FROM albums WHERE name_of_album = 'Born_to_Die' LIMIT 1)),
+    ('Rolling_in_the_Deep',228, (SELECT id_album FROM albums WHERE name_of_album = '21' LIMIT 1)),
+    ('Shape_of_My_Heart',278, (SELECT id_album FROM albums WHERE name_of_album = 'Ten Summoners Tales' LIMIT 1)),
+    ('Bad Romance',294, (SELECT id_album FROM albums WHERE name_of_album = 'The Fame Monster' LIMIT 1)),
+    ('Livin_on_a_Prayer',294, (SELECT id_album FROM albums WHERE name_of_album = 'Slippery_When_Wet' LIMIT 1)),
+    ('Smoke_on_the_Water',340, (SELECT id_album FROM albums WHERE name_of_album = 'Machine Head' LIMIT 1)),
+    ('Полковнику никто не пишет',293, (SELECT id_album FROM albums WHERE name_of_album = 'Bi-2' LIMIT 1)),
+    ('Группа крови',285, (SELECT id_album FROM albums WHERE name_of_album = 'Gruppa krovi' LIMIT 1)),
+    ('Titanium',245, (SELECT id_album FROM albums WHERE name_of_album = 'Nothing_but_the_Beat' LIMIT 1)),
+    ('Feel_So_Close',204, (SELECT id_album FROM albums WHERE name_of_album = '18 Months' LIMIT 1)),
+    ('Communication',220, (SELECT id_album FROM albums WHERE name_of_album = '76' LIMIT 1)),
+    ('Wake Me Up',247, (SELECT id_album FROM albums WHERE name_of_album = 'True_' LIMIT 1));
+
+INSERT INTO collections (name_of_collection, year_of_issue)
+VALUES 
+    ('The_Very_Best_of_Sting_&_The_Police', 1997),
+    ('Greatest_Hits_(Bon_Jovi)', 2010),
+    ('Best_Of_(Bi-2)', 2017),
+    ('Кино._Лучшие_песни_88-90', 2002);
+
+INSERT INTO tracks_collections (id_track_tc, id_collection_tc)
+VALUES 
+    ((SELECT id_track FROM tracks WHERE name_of_track = 'Shape_of_My_Heart'), (SELECT id_collection FROM collections WHERE name_of_collection = 'The_Very_Best_of_Sting_&_The_Police')),
+    ((SELECT id_track FROM tracks WHERE name_of_track = 'Livin_on_a_Prayer'), (SELECT id_collection FROM collections WHERE name_of_collection = 'Greatest_Hits_(Bon_Jovi)')),
+    ((SELECT id_track FROM tracks WHERE name_of_track = 'Полковнику никто не пишет'), (SELECT id_collection FROM collections WHERE name_of_collection = 'Best_Of_(Bi-2)')),
+    ((SELECT id_track FROM tracks WHERE name_of_track = 'Группа крови'), (SELECT id_collection FROM collections WHERE name_of_collection = 'Кино._Лучшие_песни_88-90'));
+
+

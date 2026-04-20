@@ -28,7 +28,17 @@ WHERE name_of_artist NOT LIKE '% %' AND name_of_artist NOT LIKE '%-%';
 
 SELECT name_of_track
 FROM tracks
-WHERE name_of_track LIKE '%мой%' OR name_of_track LIKE '%my%' OR name_of_track LIKE '%Мой%' OR name_of_track LIKE '%My%';
+WHERE 
+   name_of_track ILIKE 'my %'   OR name_of_track ILIKE 'my\_%' ESCAPE '\'
+   OR name_of_track ILIKE '% my'   OR name_of_track ILIKE '%\_my' ESCAPE '\'
+   OR name_of_track ILIKE '% my %' OR name_of_track ILIKE '%\_my\_%' ESCAPE '\'
+   OR name_of_track ILIKE 'my'
+
+   OR name_of_track ILIKE 'мой %'   OR name_of_track ILIKE 'мой\_%' ESCAPE '\'
+   OR name_of_track ILIKE '% мой'   OR name_of_track ILIKE '%\_мой' ESCAPE '\'
+   OR name_of_track ILIKE '% мой %' OR name_of_track ILIKE '%\_мой\_%' ESCAPE '\'
+   OR name_of_track ILIKE 'мой';
+
 
 
 -- Задание 3
@@ -42,11 +52,10 @@ GROUP BY name_of_genre;
 
 -- 2 Количество треков, вошедших в альбомы 2010–2020 годов.
 
-SELECT a.name_of_album, a.year_of_issue , COUNT(t.id_track)
+SELECT COUNT(t.id_track)
 FROM albums a
 JOIN tracks t ON a.id_album = t.id_album_fk
-WHERE a.year_of_issue BETWEEN 2010 AND 2020
-GROUP BY a.name_of_album, a.year_of_issue;
+WHERE a.year_of_issue BETWEEN 2010 AND 2020;
 
 -- 3 Средняя продолжительность треков по каждому альбому.
 
@@ -82,14 +91,14 @@ WHERE art.name_of_artist = 'Sting';
 -- Задание 4(необязательное)
 
 -- 1 Названия альбомов, в которых присутствуют исполнители более чем одного жанра.
+
 SELECT alb.name_of_album
 FROM albums alb
 JOIN albums_artists aa ON alb.id_album = aa.id_album_aa
 JOIN artists art ON aa.id_artist_aa = art.id_artist
 JOIN music_genres_artists mga ON art.id_artist = mga.id_artist_mga
-JOIN music_genres mg ON mga.id_artist_mga = mg.id_music_genre
-GROUP BY alb.name_of_album, mg.name_of_genre
-HAVING  COUNT(mg.name_of_genre)>1;
+GROUP BY alb.id_album, art.id_artist
+HAVING  COUNT(mga.id_music_genre_mga)>1;
 
 
 -- 2 Наименования треков, которые не входят в сборники.
@@ -104,11 +113,16 @@ WHERE NOT EXISTS (
 
 
 -- 3 Исполнитель или исполнители, написавшие самый короткий по продолжительности трек, — теоретически таких треков может быть несколько.
-SELECT MIN(t.duration) 
-FROM tracks t
-JOIN albums alb ON t.id_album_fk = t.id_track
-JOIN albums_artists aa ON alb.id_album = aa.id_album_aa
-JOIN artists art ON aa.id_artist_aa = art.id_artist; 
+
+SELECT DISTINCT art.name_of_artist
+FROM artists art
+JOIN albums_artists aa ON art.id_artist = aa.id_artist_aa
+JOIN albums alb ON aa.id_album_aa = alb.id_album
+JOIN tracks t ON alb.id_album = t.id_album_fk
+WHERE t.duration = (
+    SELECT MIN(duration) FROM tracks
+);
+
 
 -- 4 Названия альбомов, содержащих наименьшее количество треков.
 
@@ -123,4 +137,8 @@ HAVING COUNT(t.id_track) = (
     ORDER BY COUNT(id_track) 
     LIMIT 1
 );
+
+
+
+
 

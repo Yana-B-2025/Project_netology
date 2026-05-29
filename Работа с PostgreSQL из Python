@@ -1,0 +1,215 @@
+import psycopg2
+from psycopg2 import errors
+
+def create_users_table():
+    conn = psycopg2.connect(
+        database="Music_shop", user="postgres", password="Leta2024"
+    )
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS clients (
+                client_id SERIAL PRIMARY KEY,
+                first_name VARCHAR(50) NOT NULL,   
+                last_name VARCHAR(50) NOT NULL,    
+                email VARCHAR(100) UNIQUE,         
+                phone VARCHAR(20)                  
+            );
+        """
+        )
+    conn.commit()
+    conn.close()
+create_users_table()
+   
+def add_new_client(first_name, last_name, email, phone=None):   
+    conn = psycopg2.connect(
+        database="Music_shop", user="postgres", password="Leta2024"
+    )
+    with conn.cursor() as cur:
+        # 1. Указываем в какую таблицу и в какие колонки вставляем данные
+        # 2. В VALUES пишем %s — безопасные плейсхолдеры для Python
+        sql_query = """
+            INSERT INTO clients (first_name, last_name, email, phone)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (email) DO NOTHING;
+        """
+
+        # 3. Передаем переменные в кортеже строго в том же порядке, что и %s
+        cur.execute(sql_query, (first_name, last_name, email, phone))
+
+        print(f"Клиент {first_name} {last_name} успешно добавлен!")
+
+    conn.commit()
+    conn.close()
+
+# ПРИМЕРЫ ВЫЗОВА ФУНКЦИИ:
+
+# Пример 1: Добавляем клиента со всеми данными
+add_new_client("Иван", "Иванов", "ivanov@email.com", "+79991112233")
+
+# Пример 2: Добавляем клиента без телефона (поле phone примет значение NULL в базе)
+add_new_client("Анна", "Петрова", "petrova@email.com")
+    
+def add_phone_number(client_id, new_phone):   
+    conn = psycopg2.connect(
+        database="Music_shop", user="postgres", password="Leta2024"
+    )
+    with conn.cursor() as cur:
+        # 2. Пишем SQL-запрос на обновление
+        # %s — это плейсхолдеры, вместо которых встанут безопасные значения
+        sql_query = """
+            UPDATE clients 
+            SET phone = %s 
+            WHERE client_id = %s;
+        """
+        # 3. Выполняем запрос, передавая данные в кортеже (tuple)
+        cur.execute(sql_query, (new_phone, client_id))
+
+        # 4. Сохраняем изменения
+        conn.commit()
+        print(f"Телефон для клиента с ID {client_id} успешно обновлен!")
+
+    # 5. Закрываем соединение
+    conn.close()
+    conn.close()
+
+# ПРИМЕР ВЫЗОВА:
+# Добавим телефон '+79991112233' клиенту, у которого id равен 1
+add_phone_number(1, "+79991112233")
+
+def change_clients_data(old_first_name, old_last_name, new_email, new_phone):
+    conn = psycopg2.connect(
+        database="Music_shop", user="postgres", password="Leta2024"
+    )
+    try:
+        with conn.cursor() as cur:
+            sql_query = """
+                UPDATE clients 
+                SET email = %s,
+                    phone = %s
+                WHERE first_name = %s AND last_name = %s
+                RETURNING *;
+            """
+            cur.execute(sql_query, (new_email, new_phone, old_first_name, old_last_name))
+            updated_data = cur.fetchall()
+
+            if not updated_data:
+                print(f"Клиент {old_first_name} {old_last_name} не найден!")
+            else:
+                print(f"Данные обновлены для: {updated_data}")
+        conn.commit()
+    except errors.UniqueViolation:
+        print(f"Ошибка: Email '{new_email}' уже занят другим клиентом!")
+        conn.rollback()  # Откатываем транзакцию при ошибке [psycopg2.errors.UniqueViolation]
+    finally:
+        conn.close()
+
+# ПРИМЕР ВЫЗОВА:
+# Найдет Анну Петрову по имени и фамилии и перезапишет ей почту и телефон
+change_clients_data("Анна", "Петрова", "anna_new@email.com", "+79112223344")
+   
+   
+# Функция, позволяющая удалить телефон для существующего клиента.
+def delete_phone(first_name, last_name):   
+    conn = psycopg2.connect(
+        database="Music_shop", user="postgres", password="Leta2024"
+    )
+    with conn.cursor() as cur:
+        # В конце добавляем RETURNING *, чтобы увидеть результат работы UPDATE
+        sql_query = """
+            UPDATE clients
+            SET phone = NULL
+            WHERE first_name = %s AND last_name = %s
+            RETURNING *;
+        """
+        cur.execute(sql_query,(first_name, last_name))
+        updated_data = cur.fetchall()
+
+        # Проверяем, обновилось ли что-нибудь
+        if not updated_data:
+            print(f"Клиент {first_name} {last_name} не найден в базе!")
+        else:
+            print(f"Телефон успешно удален для всех тезок: {updated_data}")
+
+    conn.commit()
+    conn.close()
+
+delete_phone("Анна", "Петрова")
+
+
+# def clear_clients_table():
+#     conn = psycopg2.connect(
+#         database="Music_shop", user="postgres", password="Leta2024"
+#     )
+#     with conn.cursor() as cur:
+#         # TRUNCATE стирает всё мгновенно
+#         # RESTART IDENTITY сбрасывает счетчик ID на 1
+#         cur.execute("TRUNCATE TABLE clients RESTART IDENTITY;")
+#         print("Таблица clients полностью очищена! Счетчик ID сброшен на 1.")
+        
+#         # Сразу проверяем, пустая ли таблица
+#         cur.execute("SELECT COUNT(*) FROM clients;")
+#         count = cur.fetchone()[0]
+#         print(f"Сейчас строк в таблице: {count}") # Должно быть 0
+        
+#     conn.commit()
+#     conn.close()
+
+# # ВЫЗОВ ФУНКЦИИ (запустите один раз, чтобы очистить базу):
+# clear_clients_table()
+
+
+# Функция, позволяющая удалить существующего клиента.
+def delete_client(first_name, last_name):   
+    conn = psycopg2.connect(
+        database="Music_shop", user="postgres", password="Leta2024"
+    )
+    with conn.cursor() as cur:
+        sql_query = """
+            DELETE FROM clients
+            WHERE first_name = %s AND last_name = %s
+            RETURNING *;
+        """
+        cur.execute(sql_query,(first_name, last_name))
+        updated_data = cur.fetchall()
+
+        # Проверяем, обновилось ли что-нибудь
+        if not updated_data:
+            print(f"Клиент {first_name} {last_name} не найден в базе!")
+        else:
+            print(f"Клиент {updated_data}")
+
+    conn.commit()
+    conn.close()
+
+delete_phone("Анна", "Петрова")
+
+
+
+
+
+# Функция, позволяющая найти клиента по его данным: имени, фамилии, email или телефону.
+def find_client(first_name, last_name, email, phone):   
+    conn = psycopg2.connect(
+        database="Music_shop", user="postgres", password="Leta2024"
+    )
+    with conn.cursor() as cur:
+        sql_query = """
+            SELECT * FROM clients
+            WHERE first_name = %s AND last_name = %s AND email = %s AND phone = %s;
+        """
+        cur.execute(sql_query,(first_name, last_name, email, phone))
+        
+        # Забираем ВСЕ найденные строки
+        results = cur.fetchall()
+
+        if not results:
+            print("По вашему запросу ничего не найдено.")
+        else:
+            print(f"Найденные клиенты: {results}")
+
+
+    conn.commit()
+    conn.close()
+
+find_client("Иван", "Иванов", "ivanov@email.com", "+79991112233")

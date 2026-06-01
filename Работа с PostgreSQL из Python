@@ -3,7 +3,7 @@ from psycopg2 import errors
 
 def create_users_table():
     conn = psycopg2.connect(
-        database="Music_shop", user="postgres", password="Leta2024"
+        database="Music_shop", user="postgres", password=""
     )
     with conn.cursor() as cur:
         cur.execute(
@@ -23,7 +23,7 @@ create_users_table()
    
 def add_new_client(first_name, last_name, email, phone=None):   
     conn = psycopg2.connect(
-        database="Music_shop", user="postgres", password="Leta2024"
+        database="Music_shop", user="postgres", password=""
     )
     with conn.cursor() as cur:
         # 1. Указываем в какую таблицу и в какие колонки вставляем данные
@@ -52,7 +52,7 @@ add_new_client("Анна", "Петрова", "petrova@email.com")
     
 def add_phone_number(client_id, new_phone):   
     conn = psycopg2.connect(
-        database="Music_shop", user="postgres", password="Leta2024"
+        database="Music_shop", user="postgres", password=""
     )
     with conn.cursor() as cur:
         # 2. Пишем SQL-запрос на обновление
@@ -79,7 +79,7 @@ add_phone_number(1, "+79991112233")
 
 def change_clients_data(old_first_name, old_last_name, new_email, new_phone):
     conn = psycopg2.connect(
-        database="Music_shop", user="postgres", password="Leta2024"
+        database="Music_shop", user="postgres", password=""
     )
     try:
         with conn.cursor() as cur:
@@ -112,7 +112,7 @@ change_clients_data("Анна", "Петрова", "anna_new@email.com", "+791122
 # Функция, позволяющая удалить телефон для существующего клиента.
 def delete_phone(first_name, last_name):   
     conn = psycopg2.connect(
-        database="Music_shop", user="postgres", password="Leta2024"
+        database="Music_shop", user="postgres", password=""
     )
     with conn.cursor() as cur:
         # В конце добавляем RETURNING *, чтобы увидеть результат работы UPDATE
@@ -139,7 +139,7 @@ delete_phone("Анна", "Петрова")
 
 # def clear_clients_table():
 #     conn = psycopg2.connect(
-#         database="Music_shop", user="postgres", password="Leta2024"
+#         database="Music_shop", user="postgres", password=""
 #     )
 #     with conn.cursor() as cur:
 #         # TRUNCATE стирает всё мгновенно
@@ -162,7 +162,7 @@ delete_phone("Анна", "Петрова")
 # Функция, позволяющая удалить существующего клиента.
 def delete_client(first_name, last_name):   
     conn = psycopg2.connect(
-        database="Music_shop", user="postgres", password="Leta2024"
+        database="Music_shop", user="postgres", password=""
     )
     with conn.cursor() as cur:
         sql_query = """
@@ -191,7 +191,7 @@ delete_phone("Анна", "Петрова")
 # Функция, позволяющая найти клиента по его данным: имени, фамилии, email или телефону.
 def find_client(first_name, last_name, email, phone):   
     conn = psycopg2.connect(
-        database="Music_shop", user="postgres", password="Leta2024"
+        database="Music_shop", user="postgres", password=""
     )
     with conn.cursor() as cur:
         sql_query = """

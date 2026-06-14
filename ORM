@@ -1,0 +1,347 @@
+#_________________________ 1 Часть задания_________________________________________
+
+# # 1. Описываем Издателя
+# class Publisher:
+#     def __init__(self, name):
+#         self.name = name  # Название издательства
+
+# # 2. Описываем Книгу
+# class Book:
+#     def __init__(self, title, price, publisher):
+#         self.title = title          # Название книги
+#         self.price = price          # Базовая цена книги
+#         self.publisher = publisher  # Ссылка на объект Издателя
+
+# # 3. Описываем Магазин
+# class Store:
+#     def __init__(self, name, address):
+#         self.name = name        # Название магазина
+#         self.address = address  # Адрес магазина
+
+# # 4. Описываем Факт продажи
+# class Sale:
+#     def __init__(self, book, store, date, quantity):
+#         self.book = book          # Ссылка на объект Книги
+#         self.store = store        # Ссылка на объект Магазина
+#         self.date = date          # Дата продажи (строка)
+#         self.quantity = quantity  # Количество проданных штук
+
+
+# --- ПРОВЕРЯЕМ, КАК ЭТО РАБОТАЕТ НА ПРАКТИКЕ ---
+
+# Шаг 1: Создаем одного издателя
+# my_publisher = Publisher("Альпина")
+# # Шаг 2: Создаем книгу и "отдаем" её нашему издателю
+# my_book = Book("Изучаем Python", 1200, my_publisher)
+
+# # Шаг 3: Создаем магазин
+# my_store = Store("Буквоед", "Невский проспект, 46")
+
+# # Шаг 4: Регистрируем продажу (продали 3 книги "Изучаем Python" в магазине "Буквоед")
+# my_sale = Sale(my_book, my_store, "2026-06-01", 3)
+
+
+# # Шаг 5: Выводим всю информацию на экран через точку
+# print(f"Магазин: {my_sale.store.name}")
+# print(f"Адрес: {my_sale.store.address}")
+# print(f"Продана книга: {my_sale.book.title}")
+# print(f"Издатель книги: {my_sale.book.publisher.name}")
+# print(f"Количество: {my_sale.quantity} шт.")
+# print(f"Дата продажи: {my_sale.date}")
+
+# ______________________________2 Часть задания_______________________________________________
+
+
+# Используя SQLAlchemy, составить запрос выборки магазинов, продающих целевого издателя.
+# Напишите Python-скрипт, который:
+
+# подключается к БД любого типа на ваш выбор, например, к PostgreSQL;
+# импортирует необходимые модели данных;
+# принимает имя или идентификатор издателя (publisher), например, через input(). Выводит построчно факты покупки книг этого издателя:
+# название книги | название магазина, в котором была куплена эта книга | стоимость покупки | дата покупки
+
+# Пример (было введено имя автора — Пушкин):
+# Капитанская дочка | Буквоед     | 600 | 09-11-2022
+# Руслан и Людмила  | Буквоед     | 500 | 08-11-2022
+# Капитанская дочка | Лабиринт    | 580 | 05-11-2022
+# Евгений Онегин    | Книжный дом | 490 | 02-11-2022
+# Капитанская дочка | Буквоед     | 600 | 26-10-2022
+
+
+# from datetime import datetime  # Добавили импорт для работы с датами
+
+# import sqlalchemy as sq
+# from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+# from Pass import DSN
+
+# # 1. Создаем "главный класс" (пульт управления)
+# Base = declarative_base()
+
+# # ==================== ОПИСАНИЕ МОДЕЛЕЙ (ТАБЛИЦ) ====================
+
+# class Publisher(Base):
+#     __tablename__ = 'publisher'
+    
+#     id = sq.Column(sq.Integer, primary_key=True)
+#     name = sq.Column(sq.String(100), nullable=False, unique=True)
+    
+#     # Связь: один издатель к многим книгам
+#     books = relationship("Book", back_populates="publisher")
+
+# class Book(Base):
+#     __tablename__ = 'book'
+    
+#     id = sq.Column(sq.Integer, primary_key=True)
+#     title = sq.Column(sq.String(200), nullable=False)
+#     id_publisher = sq.Column(sq.Integer, sq.ForeignKey('publisher.id'), nullable=False)
+    
+#     # Обратные связи
+#     publisher = relationship("Publisher", back_populates="books")
+#     sales = relationship("Sale", back_populates="book")
+
+# class Store(Base):
+#     __tablename__ = 'store'
+#     id = sq.Column(sq.Integer, primary_key=True)
+#     name = sq.Column(sq.String(100), nullable=False)
+    
+#     sales = relationship("Sale", back_populates="store")
+
+# class Sale(Base):
+#     __tablename__ = 'sale'
+    
+#     id = sq.Column(sq.Integer, primary_key=True)
+#     # Для PostgreSQL Numeric(10, 2) — идеальный выбор для денег
+#     price = sq.Column(sq.Numeric(10, 2), nullable=False)  
+#     date_sale = sq.Column(sq.Date, nullable=False)        
+#     id_stock = sq.Column(sq.Integer, sq.ForeignKey('book.id'), nullable=False) 
+#     id_store = sq.Column(sq.Integer, sq.ForeignKey('store.id'), nullable=False) 
+#     count = sq.Column(sq.Integer, nullable=False, default=1)
+    
+#     book = relationship("Book", back_populates="sales")
+#     store = relationship("Store", back_populates="sales")
+
+# # ==================== ПОДКЛЮЧЕНИЕ И НАПОЛНЕНИЕ БД ====================
+
+
+
+# engine = sq.create_engine(DSN)
+
+# # Создаем все таблицы в базе данных PostgreSQL
+# Base.metadata.create_all(engine)
+
+# # Создаем сессию для работы с базой данных
+# Session = sessionmaker(bind=engine)
+# session = Session()
+
+# def fill_test_data():
+#     """Вспомогательная функция, чтобы наполнить базу тестовыми данными"""
+#     # Проверяем, если данные уже есть — ничего не делаем
+#     if session.query(Publisher).first():
+#         return
+        
+#     p1 = Publisher(name="Пушкин")
+    
+#     b1 = Book(title="Капитанская дочка", publisher=p1)
+#     b2 = Book(title="Руслан и Людмила", publisher=p1)
+#     b3 = Book(title="Евгений Онегин", publisher=p1)
+    
+#     s1 = Store(name="Буквоед")
+#     s2 = Store(name="Лабиринт")
+#     s3 = Store(name="Книжный дом")
+
+#     # Добавляем факты продаж
+#     sale1 = Sale(price=600, date_sale=datetime.strptime("09-11-2022", "%d-%m-%Y"), book=b1, store=s1)
+#     sale2 = Sale(price=500, date_sale=datetime.strptime("08-11-2022", "%d-%m-%Y"), book=b2, store=s1)
+#     sale3 = Sale(price=580, date_sale=datetime.strptime("05-11-2022", "%d-%m-%Y"), book=b1, store=s2)
+#     sale4 = Sale(price=490, date_sale=datetime.strptime("02-11-2022", "%d-%m-%Y"), book=b3, store=s3)
+#     sale5 = Sale(price=600, date_sale=datetime.strptime("26-10-2022", "%d-%m-%Y"), book=b1, store=s1)
+    
+#     session.add_all([p1, b1, b2, b3, s1, s2, s3, sale1, sale2, sale3, sale4, sale5])
+#     session.commit()
+
+# # Заполняем тестовыми данными перед поиском
+# fill_test_data()
+
+# # ==================== ЗАПРОС ВЫБОРКИ ====================
+
+# # 1. Принимаем имя или ID от пользователя
+# target_publisher = input("Введите имя или ID издателя (автора): ").strip()
+
+# # 2. Строим надежный SQLAlchemy запрос через связи моделей
+# query = session.query(
+#     Book.title, 
+#     Store.name, 
+#     Sale.price, 
+#     Sale.date_sale
+# ).join(Sale.book)\
+#  .join(Sale.store)\
+#  .join(Book.publisher)
+
+# # 3. Фильтруем данные: проверяем, ввел пользователь ID (цифру) или строку
+# if target_publisher.isdigit():
+#     query = query.filter(Publisher.id == int(target_publisher))
+# else:
+#     query = query.filter(Publisher.name == target_publisher)
+
+# # 4. Выполняем запрос и красиво выводим построчно факты покупок
+# results = query.all()
+
+# if results:
+#     print("\nРезультаты поиска:")
+#     for book_title, store_name, price, date_sale in results:
+#         # Форматируем дату обратно в красивую строку DD-MM-YYYY
+#         formatted_date = date_sale.strftime("%d-%m-%Y")
+#         print(f"{book_title:<20} | {store_name:<12} | {int(price):<4} | {formatted_date}")
+# else:
+#     print(f"\nПо запросу '{target_publisher}' ничего не найдено.")
+
+# # Закрываем сессию в конце работы
+# session.close()
+
+# ______________________________3 Часть задания_______________________________________________
+from datetime import datetime
+import json
+import os
+
+import sqlalchemy as sq
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+
+# Импортируем строку подключения из вашего секретного файла Pass.py
+from Pass import DSN
+
+Base = declarative_base()
+
+# ==================== ОПИСАНИЕ МОДЕЛЕЙ (ТАБЛИЦ) ====================
+
+class Publisher(Base):
+    __tablename__ = 'publisher'
+    
+    id = sq.Column(sq.Integer, primary_key=True)
+    name = sq.Column(sq.String(100), nullable=False, unique=True)
+    
+    books = relationship("Book", back_populates="publisher", cascade="all, delete-orphan")
+
+
+class Book(Base):
+    __tablename__ = 'book'
+    
+    id = sq.Column(sq.Integer, primary_key=True)
+    title = sq.Column(sq.String(200), nullable=False)
+    id_publisher = sq.Column(sq.Integer, sq.ForeignKey('publisher.id', ondelete='CASCADE'), nullable=False)
+    
+    publisher = relationship("Publisher", back_populates="books")
+    stocks = relationship("Stock", back_populates="book", cascade="all, delete-orphan")
+
+
+class Shop(Base):
+    __tablename__ = 'shop'
+    
+    id = sq.Column(sq.Integer, primary_key=True)
+    name = sq.Column(sq.String(100), nullable=False)
+    
+    stocks = relationship("Stock", back_populates="shop", cascade="all, delete-orphan")
+
+
+class Stock(Base):
+    __tablename__ = 'stock'
+    
+    id = sq.Column(sq.Integer, primary_key=True)
+    id_shop = sq.Column(sq.Integer, sq.ForeignKey('shop.id', ondelete='CASCADE'), nullable=False)
+    id_book = sq.Column(sq.Integer, sq.ForeignKey('book.id', ondelete='CASCADE'), nullable=False)
+    count = sq.Column(sq.Integer, nullable=False)
+    
+    shop = relationship("Shop", back_populates="stocks")
+    book = relationship("Book", back_populates="stocks")
+    sales = relationship("Sale", back_populates="stock", cascade="all, delete-orphan")
+
+
+class Sale(Base):
+    __tablename__ = 'sale'
+    
+    id = sq.Column(sq.Integer, primary_key=True)
+    price = sq.Column(sq.Numeric(10, 2), nullable=False)
+    date_sale = sq.Column(sq.DateTime, nullable=False)  
+    id_stock = sq.Column(sq.Integer, sq.ForeignKey('stock.id', ondelete='CASCADE'), nullable=False)  
+    count = sq.Column(sq.Integer, nullable=False)
+    
+    stock = relationship("Stock", back_populates="sales")
+
+
+# ==================== ПОДКЛЮЧЕНИЕ И НАПОЛНЕНИЕ БД ====================
+
+engine = sq.create_engine(DSN)
+
+# Автоматически удаляем старые таблицы, чтобы сбросить ошибки и пустоту
+Base.metadata.drop_all(engine)
+# Создаем абсолютно чистые таблицы заново
+Base.metadata.create_all(engine)
+
+Session = sessionmaker(bind=engine)
+session = Session()
+
+def fill_test_data_from_json(file_path):
+    """Автоматически считывает данные из JSON и сохраняет в PostgreSQL"""
+    model_mapping = {
+        'publisher': Publisher,
+        'book': Book,
+        'shop': Shop,
+        'stock': Stock,
+        'sale': Sale
+    }
+    
+    with open(file_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        
+    for item in data:
+        model_class = model_mapping.get(item['model'])
+        if model_class:
+            fields = item['fields']
+            
+            # Парсинг даты сложного формата из JSON в объект datetime
+            if model_class == Sale and 'date_sale' in fields:
+                clean_date = fields['date_sale'].replace('Z', '')
+                fields['date_sale'] = datetime.strptime(clean_date, "%Y-%m-%dT%H:%M:%S.%f")
+            
+            instance = model_class(id=item['pk'], **fields)
+            session.add(instance)
+            
+    session.commit()
+    print("✅ База данных успешно очищена и заполнена свежими фикстурами!")
+
+
+# Вызов функции импорта данных из файла test_data.json
+fill_test_data_from_json('/Users/yana/Desktop/Нетология/Netology_SQL/tests_data.json')
+
+
+# ==================== ЗАПРОС ВЫБОРКИ И ВЫВОД ====================
+
+target_publisher = input("Введите имя или ID издателя: ").strip()
+
+# Связываем таблицы через созданную модель Stock
+query = session.query(
+    Book.title, 
+    Shop.name, 
+    Sale.price, 
+    Sale.date_sale
+).join(Book.stocks)\
+ .join(Stock.shop)\
+ .join(Stock.sales)\
+ .join(Book.publisher)
+
+# Фильтрация по ID или имени
+if target_publisher.isdigit():
+    query = query.filter(Publisher.id == int(target_publisher))
+else:
+    query = query.filter(Publisher.name == target_publisher)
+
+results = query.all()
+
+if results:
+    print("\nРезультаты поиска:")
+    for book_title, shop_name, price, date_sale in results:
+        formatted_date = date_sale.strftime("%d-%m-%Y")
+        print(f"{book_title:<40} | {shop_name:<10} | {float(price):<6.2f} | {formatted_date}")
+else:
+    print(f"\nПо запросу '{target_publisher}' ничего не найдено.")
+
+session.close()

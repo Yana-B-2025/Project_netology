@@ -1,0 +1,323 @@
+import sqlite3
+import random
+import streamlit as st
+
+
+# 1. ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ И ДАННЫХ ПО УМОЛЧАНИЮ
+
+def init_db():
+    conn = sqlite3.connect("english_cards.db")
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS words (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            russian TEXT NOT NULL,
+            english TEXT NOT NULL,
+            deleted_by TEXT DEFAULT ""
+        )
+    """)
+    conn.commit()
+    
+    cursor.execute("SELECT COUNT(*) FROM words WHERE user_id = 'common'")
+    if cursor.fetchone()[0] == 0:
+        default_words = [
+            ("красный", "red"), ("синий", "blue"), ("зеленый", "green"),
+            ("я", "i"), ("он", "he"), ("она", "she"),
+            ("собака", "dog"), ("кошка", "cat"), ("яблоко", "apple"), ("книга", "book")
+        ]
+        cursor.executemany("INSERT INTO words (user_id, russian, english) VALUES ('common', ?, ?)", default_words)
+        conn.commit()
+    conn.close()
+
+
+# 2. ФУНКЦИИ ДЛЯ РАБОТЫ С ДАННЫМИ
+
+def get_user_words(user_id):
+    """Получает доступные для пользователя слова (общие + личные, исключая удаленные)"""
+    conn = sqlite3.connect("english_cards.db")
+    cursor = conn.cursor()
+    
+    # Берем общие слова (если пользователь их не удалил) и личные слова пользователя
+    cursor.execute("""
+        SELECT id, russian, english FROM words 
+        WHERE (user_id = 'common' AND NOT deleted_by LIKE ?)
+           OR (user_id = ?)
+    """, (f"%|{user_id}|%", user_id))
+    
+    words = cursor.fetchall()
+    conn.close()
+    return words
+
+def add_custom_word(user_id, russian, english):
+    """Добавляет новое слово персонально для пользователя"""
+    conn = sqlite3.connect("english_cards.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO words (user_id, russian, english) VALUES (?, ?, ?)", (user_id, russian.strip().lower(), english.strip().lower()))
+    conn.commit()
+    conn.close()
+
+def delete_user_word(user_id, word_id):
+    """Персональное удаление слова для пользователя (Понятная версия)"""
+    conn = sqlite3.connect("english_cards.db")
+    cursor = conn.cursor()
+    
+    # 1. Находим в базе создателя слова и статус удаления. 
+    # Передаем word_id в квадратных скобках [word_id] для простоты.
+    cursor.execute("SELECT user_id, deleted_by FROM words WHERE id = ?", [word_id])
+    res = cursor.fetchone()
+    
+    # Если слово с таким номером вообще существует в базе данных
+    if res is not None:
+        owner = res[0]       # Первый элемент из ответа базы (кто создал слово)
+        deleted_by = res[1]  # Второй элемент из ответа базы (список тех, кто уже удалил)
+        
+        # СЦЕНАРИЙ 1: Слово общее (common). Его нельзя стирать из базы совсем.
+        if owner == "common":
+            # Нам нужно добавить текущего пользователя в черный список для этого слова.
+            # Если до этого слово никто не удалял (в базе пустая строка):
+            if deleted_by == "":
+                new_deleted_by = f"|{user_id}|"
+            # Если кто-то уже удалял это слово до нас:
+            else:
+                new_deleted_by = f"{deleted_by}{user_id}|"
+            
+            # Обновляем запись в базе данных: добавляем метку удаления
+            cursor.execute("UPDATE words SET deleted_by = ? WHERE id = ?", [new_deleted_by, word_id])
+            
+        # СЦЕНАРИЙ 2: Слово личное (создано текущим пользователем)
+        elif owner == user_id:
+            # Раз это его личное слово, мы можем стереть строку из файла навсегда
+            cursor.execute("DELETE FROM words WHERE id = ?", [word_id])
+            
+    # Сохраняем изменения и закрываем базу
+    conn.commit()
+    conn.close()
+
+
+def get_all_english_distractors(correct_answer):
+    """Собирает случайные варианты ответа для кнопок """
+    # 1. Подключаемся к базе данных
+    conn = sqlite3.connect("english_cards.db")
+    cursor = conn.cursor()
+
+    # 2. Берем из базы все английские слова, кроме правильного ответа
+    # DISTINCT убирает дубликаты, чтобы слова не повторялись
+    cursor.execute(
+        "SELECT DISTINCT english FROM words WHERE english != ?",
+        (correct_answer,),
+    )
+    rows = cursor.fetchall()  # Получаем список строк вида [('apple',), ('banana',)]
+    conn.close()
+
+    # 3. Перекладываем слова из кортежей базы в обычный плоский список
+    all_variants = []
+    for row in rows:
+        word = row[0]  # Достаем само слово из кортежа
+        all_variants.append(word)
+
+    # 4. Если база совсем пустая или слов мало, добавляем заглушки до 3 штук
+    # Это нужно, чтобы код не сломался, если в базе всего 1-2 слова
+    while len(all_variants) < 3:
+        fake_word = f"variant_{random.randint(1, 100)}"
+        all_variants.append(fake_word)
+
+    # 5. Перемешиваем неправильные варианты и берем ровно 3 штуки
+    random.shuffle(all_variants)
+    options = []
+    options.append(all_variants[0])
+    options.append(all_variants[1])
+    options.append(all_variants[2])
+
+    # 6. Добавляем к этим трем неправильным словам наш правильный ответ
+    options.append(correct_answer)
+
+    # 7. Финально перемешиваем все 4 слова, чтобы правильный ответ не всегда был последним
+    random.shuffle(options)
+
+    return options
+
+
+import random
+import sqlite3
+import streamlit as st
+
+
+
+# === ШАГ 1. НАСТРОЙКА СТРАНИЦЫ ===
+init_db()
+st.set_page_config(page_title="EnglishCard App", page_icon="🇬🇧", layout="centered")
+st.title("🇬🇧 EnglishCard Приложение")
+
+
+# === ШАГ 2. СОЗДАНИЕ ВСЕХ ПЕРЕМЕННЫХ  ===
+
+
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None  # Имя пользователя
+
+if "current_word" not in st.session_state:
+    st.session_state.current_word = None  # Слово, которое сейчас угадывают
+
+if "options" not in st.session_state:
+    st.session_state.options = []  # Варианты ответов для кнопок
+
+if "answer_status" not in st.session_state:
+    st.session_state.answer_status = None  # Статус ответа ("correct", "incorrect" или None)
+
+
+# === ШАГ 3. ЭКРАН ВХОДА (Если пользователь еще не зашел) ===
+if st.session_state.user_id is None:
+    st.subheader("Добро пожаловать в EnglishCard!")
+    st.write(
+        "Это интерактивный тренажер для запоминания английских слов. "
+        "Проверяйте свои знания, добавляйте свои карточки и управляйте персональным словарем."
+    )
+
+    user_input = st.text_input(
+        "Введите ваше имя (уникальный ID), чтобы войти:", key="login_input"
+    )
+
+    if st.button("Начать тренировку"):
+        if user_input.strip():
+            st.session_state.user_id = user_input.strip().lower()
+            st.rerun()
+        else:
+            st.error("Имя пользователя не может быть пустым!")
+    st.stop()  # Жестко останавливаем код для гостей
+
+
+# === ШАГ 4. БОКОВАЯ ПАНЕЛЬ С КНОПКОЙ ВЫХОДА ===
+user_id = st.session_state.user_id
+nice_name = user_id.capitalize()  # Делаем имя с большой буквы
+
+st.sidebar.write(f"👤 Вы вошли как: {nice_name}")
+
+if st.sidebar.button("Выйти"):
+    st.session_state.user_id = None
+    st.session_state.current_word = None  # Спокойно очищаем через None
+    st.session_state.options = []
+    st.session_state.answer_status = None
+    st.rerun()
+
+
+# === ШАГ 5. ВКЛАДКИ НАВИГАЦИИ ===
+tab_quiz, tab_manage = st.tabs(["🎮 Тренировка", "⚙️ Управление словарем"])
+
+
+# --- ВКЛАДКА 1: ТРЕНИРОВКА ---
+with tab_quiz:
+    words_list = get_user_words(user_id)
+
+    if not words_list:
+        st.warning(
+            "В вашем словаре нет слов. Добавьте новые слова во вкладке 'Управление словарем'."
+        )
+    else:
+        # Если слово еще не выбрано, выбираем его прямо сейчас
+        if st.session_state.current_word is None:
+            chosen_word = random.choice(words_list)
+            # Извлекаем английское слово для генерации неправильных вариантов
+            english_word = chosen_word[2]
+            options = get_all_english_distractors(english_word)
+
+            st.session_state.current_word = chosen_word
+            st.session_state.options = options
+            st.session_state.answer_status = None
+
+        # Распаковываем данные текущего слова для удобства кода
+        curr_id = st.session_state.current_word[0]
+        curr_ru = st.session_state.current_word[1]
+        curr_en = st.session_state.current_word[2]
+
+        st.info(f"Как переводится слово: **{curr_ru.upper()}**?")
+
+        # Создаем сетку из 2 колонок для красивого размещения 4 кнопок
+        cols = st.columns(2)
+        for idx, option in enumerate(st.session_state.options):
+            col = cols[idx % 2]  # Чередуем левую и правую колонку
+            if col.button(
+                option.capitalize(),
+                key=f"btn_{option}_{idx}",
+                use_container_width=True,
+            ):
+                if option == curr_en:
+                    st.session_state.answer_status = "correct"
+                else:
+                    st.session_state.answer_status = "incorrect"
+
+        # Проверяем и выводим результат ответа пользователя
+        if st.session_state.answer_status == "correct":
+            st.success("🎉 Правильно! Отличный результат!")
+            if st.button("Следующее слово ➡️"):
+                st.session_state.current_word = None  # Очищаем слово через None
+                st.session_state.answer_status = None
+                st.rerun()
+        elif st.session_state.answer_status == "incorrect":
+            st.error("❌ Неверно. Попробуйте еще раз!")
+
+
+# --- ВКЛАДКА 2: УПРАВЛЕНИЕ СЛОВАРЕМ ---
+with tab_manage:
+
+    # === РАЗДЕЛ 1: ДОБАВЛЕНИЕ СЛОВА ===
+    st.subheader("➕ Добавить новое слово")
+
+    # Создаем два обычных поля ввода
+    ru_word = st.text_input("Слово на русском:", key="input_ru")
+    en_word = st.text_input("Перевод на английском:", key="input_en")
+
+    # Создаем простую кнопку для добавления
+    if st.button("Добавить в мой словарь"):
+
+        # Проверяем, что пользователь не оставил поля пустыми
+        if ru_word == "":
+            st.error("Заполните поле на русском!")
+        elif en_word == "":
+            st.error("Заполните поле на английском!")
+        else:
+            # Если оба поля заполнены, отправляем слово в базу данных
+            add_custom_word(user_id, ru_word, en_word)
+            st.success(
+                f"Слово '{ru_word}' успешно добавлено в ваш личный список!"
+            )
+            st.rerun()
+
+    # === РАЗДЕЛ 2: УДАЛЕНИЕ СЛОВ ===
+    st.subheader("🗑️ Ваши доступные слова (Удаление)")
+
+    # Загружаем из базы список всех слов этого пользователя
+    current_words = get_user_words(user_id)
+
+    # Запускаем цикл, чтобы вывести каждую карточку на экран
+    for row in current_words:
+        # Достаем данные карточки по порядку индексов
+        w_id = row[0]  # Уникальный номер слова
+        w_ru = row[1]  # Русское слово
+        w_en = row[2]  # Английское слово
+
+        # Делим экран на 2 обычные колонки
+        col_text, col_action = st.columns(2)
+
+        # В левую колонку пишем текст карточки
+        col_text.write(f"**{w_ru}** — {w_en}")
+
+        # В правой колонке рисуем кнопку "Удалить" со своим уникальным key
+        if col_action.button("Удалить", key=f"del_{w_id}"):
+
+            # 1. Стираем слово из базы данных
+            delete_user_word(user_id, w_id)
+
+            # 2. Проверяем: вдруг пользователь удалил то слово, которое сейчас открыто в тесте?
+            if st.session_state.current_word is not None:
+                opened_word_id = st.session_state.current_word[0]
+
+                # Если ID удаленного слова совпадает с ID открытого слова в тесте:
+                if opened_word_id == w_id:
+                    st.session_state.current_word = None  # Сбрасываем тест
+                    st.session_state.answer_status = None
+
+            # 3. Сообщаем об успехе и обновляем страницу
+            st.success("Слово скрыто/удалено!")
+            st.rerun()

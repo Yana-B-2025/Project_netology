@@ -1,0 +1,53 @@
+import requests
+from bs4 import BeautifulSoup
+
+# 1. Определяем список ключевых слов
+KEYWORDS = ['дизайн', 'фото', 'web', 'python']
+
+# URL страницы со свежими статьями
+URL = 'https://habr.com'
+
+# Заголовки, чтобы сайт не заблокировал запросы робота
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+}
+
+def check_preview_articles():
+    # Получаем страницу
+    response = requests.get(URL, headers=HEADERS)
+    response.raise_for_status()
+    
+    # Парсим HTML
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Находим все карточки статей на странице
+    articles = soup.find_all('article', class_='tm-articles-list__item')
+    
+    for article in articles:
+        # Находим заголовок и ссылку
+        title_element = article.find('a', class_='tm-title__link')
+        if not title_element:
+            continue
+            
+        title = title_element.text.strip()
+        link = 'https://habr.com' + title_element['href']
+        
+        # Находим дату публикации
+        time_element = article.find('time')
+        date_str = time_element['title'] if time_element else 'Дата не указана'
+        
+        # Находим текст превью (если он есть)
+        preview_element = article.find('div', class_='tm-article-bodytm-article-snippet__lead')
+        preview_text = preview_element.text.strip() if preview_element else ''
+        
+        # Объединяем текст для поиска (приводим к нижнему регистру)
+        full_preview_content = f"{title} {preview_text}".lower()
+        
+        # Проверяем наличие ключевых слов
+        for word in KEYWORDS:
+            if word.lower() in full_preview_content:
+                print(f"{date_str} – {title} – {link}")
+                break # Выходим из цикла слов, чтобы не дублировать статью
+
+if __name__ == '__main__':
+    check_preview_articles()

@@ -1,0 +1,77 @@
+class Stack:
+    def __init__(self):
+        self.items = []
+
+    def is_empty(self):
+        """Проверка стека на пустоту. Возвращает True или False."""
+        return len(self.items) == 0
+
+    def push(self, item):
+        """Добавляет новый элемент на вершину стека."""
+        self.items.append(item)
+
+    def pop(self):
+        """Удаляет верхний элемент стека и возвращает его."""
+        if self.is_empty():
+            raise IndexError("Попытка извлечь элемент из пустого стека")
+        return self.items.pop()
+
+    def peek(self):
+        """Возвращает верхний элемент стека, не удаляя его."""
+        if self.is_empty():
+            return None
+        return self.items[-1]
+
+    def size(self):
+        """Возвращает количество элементов в стеке."""
+        return len(self.items)
+
+
+def check_balance(brackets_string):
+    stack = Stack()
+    # Словарь соответствия закрывающей скобки открывающей
+    matching_brackets = {
+        ')': '(',
+        ']': '[',
+        '}': '{'
+    }
+    
+    for char in brackets_string:
+        # Если скобка открывающая, кладем её в стек
+        if char in matching_brackets.values():
+            stack.push(char)
+        # Если скобка закрывающая
+        elif char in matching_brackets.keys():
+            # Если стек пуст или верхний элемент не совпадает с парой — дисбаланс
+            if stack.is_empty() or stack.pop() != matching_brackets[char]:
+                return "Несбалансированно"
+                
+    # Если после проверки всей строки стек пуст — всё сбалансированно
+    if stack.is_empty():
+        return "Сбалансированно"
+    else:
+        return "Несбалансированно"
+
+
+# Пример работы и тестирования
+if __name__ == "__main__":
+    # Тест-кейсы из условия задания
+    balanced_examples = [
+        "(((([{}]))))",
+        "[([])((([[[]]])))]{()}",
+        "{{[()]}}"
+    ]
+    
+    unbalanced_examples = [
+        "}{}",
+        "{{[(])]}}",
+        "[[{())}]"
+    ]
+    
+    print("--- Проверка сбалансированных строк ---")
+    for s in balanced_examples:
+        print(f"{s}: {check_balance(s)}")
+        
+    print("\n--- Проверка несбалансированных строк ---")
+    for s in unbalanced_examples:
+        print(f"{s}: {check_balance(s)}")

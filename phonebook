@@ -1,0 +1,86 @@
+import csv
+import re
+from pprint import pprint
+
+# Читаем адресную книгу в формате CSV в список contacts_list
+with open("phonebook_raw.csv", encoding="utf-8") as f:
+    rows = csv.reader(f, delimiter=",")
+    contacts_list = list(rows)
+
+# Извлекаем заголовок таблицы, чтобы он не участвовал в обработке данных
+header = contacts_list[0]
+data_rows = contacts_list[1:]
+
+# Словарь для объединения дубликатов. Ключ: (lastname, firstname)
+processed_contacts = {}
+
+# Регулярное выражение для поиска и форматирования телефонов
+# Группы: 1-код страны, 2-код города, 3,4,5-части номера, 6-добавочный номер (если есть)
+PHONE_PATTERN = re.compile(
+    r'(?:\+7|8)\s*\(?(\d{3})\)?[\s-]*(\d{3})[\s-]*(\d{2})[\s-]*(\d{2})(?:\s*\(?доб\.?\s*(\d+)\)?)?'
+)
+
+for row in data_rows:
+    # --- Шаг 1: Распределение ФИО ---
+    # Соединяем первые три элемента (Ф, И, О) в одну строку и делим по пробелам
+    full_name_string = " ".join(row[:3]).strip()
+    name_parts = full_name_string.split(" ")
+    
+    # Гарантируем, что список ФИО всегда содержит 3 элемента (дописываем пустые строки при необходимости)
+    while len(name_parts) < 3:
+        name_parts.append('')
+        
+    lastname, firstname, surname = name_parts[0], name_parts[1], name_parts[2]
+    
+    # --- Шаг 2: Форматирование телефона ---
+    raw_phone = row[5]
+    if raw_phone:
+        # Ищем совпадение по регулярному выражению
+        match = PHONE_PATTERN.search(raw_phone)
+        if match:
+            # Собираем основной номер телефона
+            formatted_phone = f"+7({match.group(1)}){match.group(2)}-{match.group(3)}-{match.group(4)}"
+            # Если есть добавочный номер (5-я группа регулярного выражения)
+            if match.group(5):
+                formatted_phone += f" доб.{match.group(5)}"
+        else:
+            formatted_phone = raw_phone
+    else:
+        formatted_phone = ''
+
+    # Остальные поля без изменений
+    organization = row[3]
+    position = row[4]
+    email = row[6]
+
+    # --- Шаг 3: Объединение дубликатов ---
+    # Создаем уникальный ключ из Фамилии и Имени
+    dict_key = (lastname, firstname)
+
+    if dict_key not in processed_contacts:
+        # Если человека еще нет в словаре, добавляем его запись целиком
+        processed_contacts[dict_key] = [
+            lastname, firstname, surname, 
+            organization, position, formatted_phone, email
+        ]
+    else:
+        # Если человек уже есть, дополняем пустые поля из новой записи
+        existing_row = processed_contacts[dict_key]
+        
+        if not existing_row[2]: existing_row[2] = surname
+        if not existing_row[3]: existing_row[3] = organization
+        if not existing_row[4]: existing_row[4] = position
+        if not existing_row[5]: existing_row[5] = formatted_phone
+        if not existing_row[6]: existing_row[6] = email
+
+# Собираем итоговый список: заголовок + очищенные данные из словаря
+final_contacts_list = [header] + list(processed_contacts.values())
+
+# Выводим результат работы в консоль
+print("\nОчищенная телефонная книга:")
+pprint(final_contacts_list)
+
+# --- Шаг 4: Сохранение данных в новый файл ---
+with open("phonebook.csv", "w", encoding="utf-8", newline="") as f:
+    datawriter = csv.writer(f, delimiter=',')
+    datawriter.writerows(final_contacts_list)

@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 KEYWORDS = ['дизайн', 'фото', 'web', 'python']
 
 # URL страницы со свежими статьями
-URL = 'https://habr.com'
+URL = 'https://habr.com/ru/articles/'
 
 # Заголовки, чтобы сайт не заблокировал запросы робота
 HEADERS = {
@@ -36,8 +36,8 @@ def check_preview_articles():
         time_element = article.find('time')
         date_str = time_element['title'] if time_element else 'Дата не указана'
         
-        # Находим текст превью (если он есть)
-        preview_element = article.find('div', class_='tm-article-bodytm-article-snippet__lead')
+        # ИСПРАВЛЕНО: Добавлен пробел между классами tm-article-body и tm-article-snippet__lead
+        preview_element = article.find('div', class_='tm-article-body tm-article-snippet__lead')
         preview_text = preview_element.text.strip() if preview_element else ''
         
         # Объединяем текст для поиска (приводим к нижнему регистру)
@@ -51,3 +51,4 @@ def check_preview_articles():
 
 if __name__ == '__main__':
     check_preview_articles()
+
